@@ -6,7 +6,6 @@ Release/
 
 # other artifacts
 .metadata/
-.mxproject
 
 # prevents accidental cmake commits
 cmake-build-*/
