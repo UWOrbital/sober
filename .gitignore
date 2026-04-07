@@ -1,0 +1,26 @@
+# build and debug artifacts
+build/
+Debug/
+Release/
+*.launch
+
+# other artifacts
+.metadata/
+.mxproject
+
+# prevents accidental cmake commits
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+
+# editor folders and files
+.settings/
+.vscode/
+/.project
+/.idea
+
+# system folders and files
+.DS_Store
+
+# remove build host
+*build-host*
