@@ -1,0 +1,33 @@
+name: HW Compile Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  hw_compile:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config: [ "Debug" ]
+        # just debug as a test, can add release later
+        
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      # no submodules
+      
+    - name: Build Docker image
+      run: docker build -t stm32-ci -f docker/Dockerfile .
+
+      # both -data and -import workspaces are just the root as theres one hw targets
+    - name: Build ${{ matrix.config }}
+      run: |
+        docker run --rm stm32-ci \
+          stm32cubeide --launcher.suppressErrors -nosplash \
+          -application org.eclipse.cdt.managedbuilder.core.headlessbuild \
+          -data /workspace \ 
+          -import /workspace \ 
+          -cleanBuild "SOBER-MCU/${{ matrix.config }}"
