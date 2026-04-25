@@ -15,7 +15,7 @@ CMakeCache.txt
 # editor folders and files
 .settings/
 .vscode/
-/.project
+#/.project
 /.idea
 
 # system folders and files
