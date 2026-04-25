@@ -28,6 +28,6 @@ jobs:
         docker run --rm stm32-ci \
           stm32cubeide --launcher.suppressErrors -nosplash \
           -application org.eclipse.cdt.managedbuilder.core.headlessbuild \
-          -data /workspace \ 
-          -import /workspace \ 
+          -data /workspace \
+          -import /workspace \
           -cleanBuild "SOBER-MCU/${{ matrix.config }}"
