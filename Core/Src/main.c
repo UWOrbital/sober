@@ -18,7 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "memorymap.h"
+#include "cmsis_os.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -51,6 +51,7 @@ COM_InitTypeDef BspCOMInit;
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -93,6 +94,12 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
+
   /* Initialize leds */
   BSP_LED_Init(LED_GREEN);
   BSP_LED_Init(LED_BLUE);
@@ -111,6 +118,11 @@ int main(void)
   {
     Error_Handler();
   }
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
