@@ -1,0 +1,10 @@
+.git
+docker/
+.github/
+Debug/
+Release/
+build/
+*.launch
+.DS_Store
+.vscode/
+.idea/
