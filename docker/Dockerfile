@@ -4,3 +4,5 @@ RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 COPY . .
+
+RUN chmod +x scripts/hwbuild.bash
