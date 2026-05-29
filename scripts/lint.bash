@@ -9,6 +9,7 @@ config="Debug"
 workspace_dir="${TMPDIR:-/tmp}/sober-lint-workspace"
 build_dir="${TMPDIR:-/tmp}/sober-lint-build"
 compile_commands_file="${build_dir}/compile_commands.json"
+line_filter_file="${build_dir}/clang-tidy-line-filter.json"
 
 usage() {
   echo "Usage: $0 [-c]"
@@ -65,11 +66,52 @@ if [[ ${#source_files[@]} -eq 0 ]]; then
   exit 1
 fi
 
+# Extract USER CODE regions for clang-tidy line filtering
+user_code_json='['
+first_file='true'
+for source_file in "${source_files[@]}"; do
+  mapfile -t user_ranges < <(awk '
+    /\/\* USER CODE BEGIN / { begin = NR + 1; active = 1; next }
+    /\/\* USER CODE END / && active { end = NR - 1; if (end >= begin) print begin ":" end; active = 0 }
+  ' "$source_file")
+
+  if [[ ${#user_ranges[@]} -eq 0 ]]; then
+    continue
+  fi
+
+  if [[ "$first_file" == "false" ]]; then
+    user_code_json+=','
+  fi
+  first_file='false'
+
+  user_code_json+="{\"name\":\"${source_file#${project_dir}/}\",\"lines\":["
+  first_range='true'
+  for user_range in "${user_ranges[@]}"; do
+    start_line=${user_range%%:*}
+    end_line=${user_range##*:}
+    if [[ "$first_range" == "false" ]]; then
+      user_code_json+=','
+    fi
+    first_range='false'
+    user_code_json+="{\"start\":${start_line},\"end\":${end_line}}"
+  done
+  user_code_json+=']}'
+done
+user_code_json+=']'
+
+if [[ "$user_code_json" == '[]' ]]; then
+  echo "error: no USER CODE regions found for clang-tidy filtering" >&2
+  exit 1
+fi
+
+printf '%s\n' "$user_code_json" > "$line_filter_file"
+
 echo "==> Running clang-tidy..."
 clang-tidy "${source_files[@]}" -p "$build_dir" \
   --checks='-*,clang-analyzer-*,bugprone-*,readability-*' \
   --warnings-as-errors='clang-analyzer-*,bugprone-*,readability-*' \
   --system-headers=false \
+  --line-filter="$(cat "$line_filter_file")" \
   --header-filter="^${project_dir}/Core/"
 
 echo "==> Done linting."
