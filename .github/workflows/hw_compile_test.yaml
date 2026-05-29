@@ -7,13 +7,8 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  hw_compile:
+  hw_compile_debug:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        config: [ "Debug" ]
-        # just debug as a test, can add release later
-        
     steps:
     - name: Checkout repo
       uses: actions/checkout@v4
@@ -22,12 +17,22 @@ jobs:
     - name: Build Docker image
       run: docker build -t stm32-ci -f docker/Dockerfile .
 
-      # both -data and -import workspaces are just the root as theres one hw targets
-    - name: Build ${{ matrix.config }}
+    - name: Build Debug
       run: |
         docker run --rm stm32-ci \
-          stm32cubeide --launcher.suppressErrors -nosplash \
-          -application org.eclipse.cdt.managedbuilder.core.headlessbuild \
-          -data /tmp/workspace \
-          -import /workspace \
-          -cleanBuild "SOBER-MCU/${{ matrix.config }}"
+          /workspace/scripts/hwbuild.bash -c -f "Debug"
+
+  hw_compile_release:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+      # no submodules
+
+    - name: Build Docker image
+      run: docker build -t stm32-ci -f docker/Dockerfile .
+
+    - name: Build Release
+      run: |
+        docker run --rm stm32-ci \
+          /workspace/scripts/hwbuild.bash -c -f "Release"
