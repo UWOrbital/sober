@@ -7,7 +7,7 @@ project_dir=$( cd -- "${script_dir}/.." &> /dev/null && pwd )
 project_name="SOBER-MCU"
 config="Debug"
 clean="false"
-workspace_dir="${project_dir}/build/stm32cubeide-workspace"
+workspace_dir="${TMPDIR:-/tmp}/stm32cubeide-workspace"
 
 usage() {
     echo "Usage: $0 [-c] [-f Debug|Release]"
