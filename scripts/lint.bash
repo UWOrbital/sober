@@ -93,7 +93,7 @@ for source_file in "${source_files[@]}"; do
       user_code_json+=','
     fi
     first_range='false'
-    user_code_json+="{\"start\":${start_line},\"end\":${end_line}}"
+    user_code_json+="[${start_line},${end_line}]"
   done
   user_code_json+=']}'
 done
