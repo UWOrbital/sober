@@ -69,6 +69,7 @@ fi
 # Extract USER CODE regions for clang-tidy line filtering
 user_code_json='['
 first_file='true'
+lint_files=()
 for source_file in "${source_files[@]}"; do
   mapfile -t user_ranges < <(awk '
     /\/\* USER CODE BEGIN / { begin = NR + 1; active = 1; next }
@@ -83,6 +84,7 @@ for source_file in "${source_files[@]}"; do
     user_code_json+=','
   fi
   first_file='false'
+  lint_files+=("$source_file")
 
   user_code_json+="{\"name\":\"${source_file#${project_dir}/}\",\"lines\":["
   first_range='true'
@@ -99,7 +101,7 @@ for source_file in "${source_files[@]}"; do
 done
 user_code_json+=']'
 
-if [[ "$user_code_json" == '[]' ]]; then
+if [[ "$user_code_json" == '[]' || ${#lint_files[@]} -eq 0 ]]; then
   echo "error: no USER CODE regions found for clang-tidy filtering" >&2
   exit 1
 fi
@@ -107,10 +109,11 @@ fi
 printf '%s\n' "$user_code_json" > "$line_filter_file"
 
 echo "==> Running clang-tidy..."
-clang-tidy "${source_files[@]}" -p "$build_dir" \
+clang-tidy "${lint_files[@]}" -p "$build_dir" \
   --checks='-*,clang-analyzer-*,bugprone-*,readability-*' \
   --warnings-as-errors='clang-analyzer-*,bugprone-*,readability-*' \
   --system-headers=false \
+  --remove-arg=-fcyclomatic-complexity \
   --line-filter="$(cat "$line_filter_file")" \
   --header-filter="^${project_dir}/Core/"
 
