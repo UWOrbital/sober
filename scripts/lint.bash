@@ -113,7 +113,7 @@ clang-tidy "${lint_files[@]}" -p "$build_dir" \
   --checks='-*,clang-analyzer-*,bugprone-*,readability-*' \
   --warnings-as-errors='clang-analyzer-*,bugprone-*,readability-*' \
   --system-headers=false \
-  --remove-arg=-fcyclomatic-complexity \
+  --removed-arg=-fcyclomatic-complexity \
   --line-filter="$(cat "$line_filter_file")" \
   --header-filter="^${project_dir}/Core/"
 
