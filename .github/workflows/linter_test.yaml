@@ -1,0 +1,23 @@
+name: Linter Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  linting_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Build Docker image
+      run: docker build -t stm32-ci -f docker/Dockerfile .
+
+    - name: Run lint checks
+      run: |
+        docker run --rm stm32-ci \
+          /workspace/app/lint.bash -c
