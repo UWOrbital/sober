@@ -45,6 +45,11 @@ if ! command -v clang-tidy >/dev/null 2>&1; then
   exit 1
 fi
 
+if ! command -v python3 >/dev/null 2>&1; then
+  echo "error: python3 is not available on PATH" >&2
+  exit 1
+fi
+
 if [[ ! -f "${project_dir}/.project" || ! -f "${project_dir}/.cproject" ]]; then
   echo "error: expected STM32CubeIDE project files were not found at ${project_dir}" >&2
   exit 1
@@ -58,6 +63,26 @@ bear --output "$compile_commands_file" -- stm32cubeide --launcher.suppressErrors
   -data "$workspace_dir" \
   -import "$project_dir" \
   -cleanBuild "${project_name}/${config}"
+
+python3 - "$compile_commands_file" <<'PY'
+import json
+import pathlib
+import shlex
+import sys
+
+compile_commands_path = pathlib.Path(sys.argv[1])
+entries = json.loads(compile_commands_path.read_text())
+
+for entry in entries:
+    if "command" in entry:
+        parts = shlex.split(entry["command"])
+        parts = [part for part in parts if part != "-fcyclomatic-complexity"]
+        entry["command"] = " ".join(shlex.quote(part) for part in parts)
+    elif "arguments" in entry:
+        entry["arguments"] = [part for part in entry["arguments"] if part != "-fcyclomatic-complexity"]
+
+compile_commands_path.write_text(json.dumps(entries, indent=2) + "\n")
+PY
 
 mapfile -d '' source_files < <(find "$project_dir/Core/Src" -type f \( -name '*.c' -o -name '*.cpp' \) -print0)
 
@@ -113,7 +138,6 @@ clang-tidy "${lint_files[@]}" -p "$build_dir" \
   --checks='-*,clang-analyzer-*,bugprone-*,readability-*' \
   --warnings-as-errors='clang-analyzer-*,bugprone-*,readability-*' \
   --system-headers=false \
-  --removed-arg=-fcyclomatic-complexity \
   --line-filter="$(cat "$line_filter_file")" \
   --header-filter="^${project_dir}/Core/"
 
