@@ -20,7 +20,7 @@ jobs:
     - name: Build Debug
       run: |
         docker run --rm stm32-ci \
-          /workspace/scripts/hwbuild.bash -c -f "Debug"
+          /workspace/app/hwbuild.bash -c -f "Debug"
 
   hw_compile_release:
     runs-on: ubuntu-latest
@@ -35,4 +35,4 @@ jobs:
     - name: Build Release
       run: |
         docker run --rm stm32-ci \
-          /workspace/scripts/hwbuild.bash -c -f "Release"
+          /workspace/app/hwbuild.bash -c -f "Release"

@@ -1,8 +1,8 @@
 FROM xanderhendriks/stm32cubeide:16.0
 
-RUN apt-get update && apt-get install -y git bear clang-tidy gcc-arm-none-eabi libnewlib-arm-none-eabi python3 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git bear clang-tidy && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 COPY . .
 
-RUN chmod +x scripts/*.bash
+RUN bash -lc 'for f in app/*.bash; do [ -f "${f}" ] && chmod +x "${f}"; done'

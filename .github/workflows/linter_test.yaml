@@ -20,4 +20,4 @@ jobs:
     - name: Run lint checks
       run: |
         docker run --rm stm32-ci \
-          /workspace/scripts/lint.bash -c
+          /workspace/app/lint.bash -c
