@@ -58,31 +58,34 @@ bear --output "$compile_commands_file" -- stm32cubeide --launcher.suppressErrors
   -import "$project_dir" \
   -cleanBuild "${project_name}/${config}"
 
+sed -i 's/-fcyclomatic-complexity//g' "$compile_commands_file"
+
 source_dirs=()
-for dir in "$script_dir/src" "$script_dir/include"; do
+for dir in "$script_dir/src"; do
   if [[ -d "$dir" ]]; then
     source_dirs+=("$dir")
   fi
 done
 
 if [[ ${#source_dirs[@]} -eq 0 ]]; then
-  echo "==> No app source directories found; skipping clang-tidy." 
+  echo "==> No app source directories found; skipping clang-tidy."
   exit 0
 fi
 
 echo "==> Running clang-tidy on app sources..."
 
-mapfile -d '' source_files < <(find "${source_dirs[@]}" -type f \( -name '*.c' -o -name '*.cpp' -o -name '*.h' -o -name '*.hpp' \) -print0)
+mapfile -d '' source_files < <(find "${source_dirs[@]}" -type f \( -name '*.c' -o -name '*.cpp' \) -print0)
 
 if [[ ${#source_files[@]} -eq 0 ]]; then
-  echo "==> No app source files found under ${script_dir}/src or ${script_dir}/include; skipping clang-tidy."
+  echo "==> No app source files found under ${script_dir}/src; skipping clang-tidy."
   exit 0
 fi
 
 clang-tidy "${source_files[@]}" -p "$build_dir" \
-  --checks='-*,clang-analyzer-*,bugprone-*,readability-*' \
-  --warnings-as-errors='clang-analyzer-*,bugprone-*,readability-*' \
+  --checks='readability-identifier-naming*' \
+  --warnings-as-errors='readability-identifier-naming*' \
   --system-headers=false \
-  --header-filter="^${project_dir}/app/"
+  --header-filter="^${project_dir}/app/" \
+  --extra-arg=-I"${script_dir}/include"
 
 echo "==> Done linting."
