@@ -1,6 +1,6 @@
 #include "app_math.h"
 
-uint32_t appClampU32(uint32_t value, uint32_t lowerBound, uint32_t upperBound)
+uint32_t AppClampU32(uint32_t value, uint32_t lowerBound, uint32_t upperBound)
 {
     if (lowerBound > upperBound) {
         return value;
