@@ -10,7 +10,7 @@ clean="false"
 workspace_dir="${TMPDIR:-/tmp}/stm32cubeide-workspace"
 
 usage() {
-    echo "Usage: $0 [-c] [-f Debug|Release]"
+    echo "Usage: $0 [-c] [-f Debug|Release] [-h]"
     exit 1
 }
 

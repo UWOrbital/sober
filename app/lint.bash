@@ -11,7 +11,7 @@ build_dir="${TMPDIR:-/tmp}/sober-lint-build"
 compile_commands_file="${build_dir}/compile_commands.json"
 
 usage() {
-  echo "Usage: $0 [-c]"
+  echo "Usage: $0 [-c] [-h]"
   exit 1
 }
 

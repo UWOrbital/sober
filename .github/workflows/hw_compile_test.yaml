@@ -25,14 +25,14 @@ jobs:
   hw_compile_release:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-      # no submodules
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        # no submodules
 
-    - name: Build Docker image
-      run: docker build -t stm32-ci -f docker/Dockerfile .
+      - name: Build Docker image
+        run: docker build -t stm32-ci -f docker/Dockerfile .
 
-    - name: Build Release
-      run: |
-        docker run --rm stm32-ci \
-          /workspace/app/hwbuild.bash -c -f "Release"
+      - name: Build Release
+        run: |
+          docker run --rm stm32-ci \
+            /workspace/app/hwbuild.bash -c -f "Release"
