@@ -4,96 +4,54 @@
 #include <string.h>
 #include "lepton.hpp"
 
-#define I2C_DEVICE_ADDRESS 0x2A
+I2C_HandleTypeDef hi2c1; // Define the static member variable
 
 Lepton::Lepton(SPI_HandleTypeDef *spiHandle, GPIO_TypeDef *csPort, uint16_t csPin)
-    : spiHandle(spiHandle), csPort(csPort), csPin(csPin) {}
+    : spiHandle(spiHandle), csPort(csPort), csPin(csPin) {
+}
 
 
 int Lepton::init() {
-    // Initialize the Lepton camera here
-    // This may involve setting up SPI, GPIO, and sending initialization commands to the camera
-    // init i2c (cci)
-
-    // configure i2c handle
-    I2C_HandleTypeDef hi2c;
-    hi2c.Instance = I2C1; //check wiring
-    hi2c.Init.Timing = 0x00C0EAFF; // Timing value for 400kHz, check reference manual
-    hi2c.Init.OwnAddress1 = 0;
-    hi2c.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT; // check
-    hi2c.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
-    hi2c.Init.OwnAddress2 = 0;
-    hi2c.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
-    hi2c.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
-
-    hi2c.Devaddress = I2C_DEVICE_ADDRESS; // Lepton camera I2C address
-
-    // call init
-    if (HAL_I2C_Init(&hi2c) != HAL_OK) {
-        Error_Handler(); // Handle error
-    }
 
     // wait 950 ms (see datasheet 2)
     HAL_Delay(950);
 
-    // configure hal i2c msp init
-    if (hi2c->Instance == I2C1)
-    {
-        // clocks applied
-    __HAL_RCC_I2C1_CLK_ENABLE();
-    __HAL_RCC_GPIOB_CLK_ENABLE();
-
-    GPIO_InitTypeDef GPIO_InitStruct = {0};
-    GPIO_InitStruct.Pin = GPIO_PIN_8 | GPIO_PIN_9; // CONFIRM WITH data sheet
-    GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-    GPIO_InitStruct.Pull = GPIO_PULLUP;
-    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-    GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
-    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-    HAL_NVIC_SetPriority(I2C1_EV_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
-    HAL_NVIC_SetPriority(I2C1_ER_IRQn, 5, 0);
-    HAL_NVIC_EnableIRQ(I2C1_ER_IRQn);
-    }
-    
-    // need to do interrupt mode, so enable i2c event/error irqs and implement:
-    // hal_i2c_ev_IRQHandler
-    // hal_i2c_er_IRQHandler
-
-    //then for read write, use HAL_I2C_Mem_read_IT
-    // HAL_I2C_Mem_Write_IT
-    // or work this one out a bit more
-    // we need callback for interrupt
-
+    HAL_I2C_IsDeviceReady(&hi2c1, I2C_DEVICE_ADDRESS, 3, 1000); // Check if device is ready
         
-        // isCCIReady() check
-        // status register (0x0002) bit 2 read, should be 1. if 0, wait more
-        // status register (0x0002) bit 0 read, should be 0. if 1, poll until 0
-        // poll sys ffc command status (4.5.18 see this part) (system ready return)
+    int status = isCCIReady();
 
-        //
-
-    return 0; // Return 0 on success
+    return status; // Return 0 on success, -1 otherwise
 }
 
 bool Lepton::isCCIReady() {
         // command STATUS read in 0x0002
+    std::int8_t errorCode;
+    uint8_t status[2] = {0};
+    if (readRegister(0x0002, &status) != HAL_OK) { // error, could not read status register
+        errorCode = status[0]; // log this later
+        return false;
+    }
+    // else if (!(status[1] && 0x02 >> 1)){ // if bit 1 is 0, ROM is cooked could not boot
+    //     return false;
+    // }
+    
+    while(status[1] != 0x06){ // must be 0000 0110 when ready 
+        errorCode = status[0]; // log this later
+        HAL_Delay(100);
         readRegister(0x0002, &status);
-        // status register (0x0002) bit 2 read, should be 1. if 0, wait more
-        // status register (0x0002) bit 0 read, should be 0. if 1, poll until 0
+        if (HAL_GetTick() >= 2000) // timeout at 2 seconds
+            return false;
+    }
+
+    return true;
+}
         // poll sys ffc command status (4.5.18 see this part) (system ready return)
 
-    return true; // Placeholder, implement actual check
-}
-
-uint16_t Lepton::readRegister(uint16_t* register_address, uint16_t *value) {
-    
-    //need i2c to basically read the device address 0x2A
-    // then we need i2c to consult the specific register address
-    // then we need to read information from there in a buffer of specified size
-    // we may get an error code, which we should return as a data type of that sort?
-    return status;
+HAL_StatusTypeDef Lepton::readRegister(uint16_t* register_address, uint16_t *rxData) {
+    // HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
+    //                               uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+    // uses i2c handle, cci device address, register address provided, rxdata payload, size of 2 bytes, timeout of 1000 ms
+    return HAL_I2C_Mem_Read(&hi2c1, I2C_DEVICE_ADDRESS, register_address, I2C_MEMADD_SIZE_16BIT, (uint8_t *)rxData, 2, 1000);
 }
 
 bool Lepton::writeRegister(uint16_t register_address, uint16_t value) {
@@ -101,6 +59,11 @@ bool Lepton::writeRegister(uint16_t register_address, uint16_t value) {
     // Write to the specified register of the Lepton camera via SPI
     // This may involve sending a command and data
     return status;
+}
+
+int8_t Lepton::sendCommand(uint16_t command) {
+    // Implementation for sending command to Lepton camera
+    return 0; // Placeholder
 }
 
 ThermalImageFrame_t Lepton::streamFrames() {

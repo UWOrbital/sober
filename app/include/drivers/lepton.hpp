@@ -28,5 +28,13 @@ class Lepton : public IThermal {
 		SPI_HandleTypeDef *getSPI();
 
 	private:
-		
+		HAL_StatusTypeDef readRegister(uint16_t registerAddress, uint16_t *value);
+		HAL_StatusTypeDef writeRegister(uint16_t registerAddress, uint16_t value);
+		bool isCCIReady();
+
+		SPI_HandleTypeDef *spiHandle;
+		GPIO_TypeDef *csPort;
+		uint16_t csPin;
+        extern I2C_HandleTypeDef hi2c1;
+
 };
