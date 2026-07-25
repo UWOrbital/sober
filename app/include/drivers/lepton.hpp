@@ -2,6 +2,7 @@
 
 #include "IThermal.hpp"
 #include "stm32h7xx_hal.h"
+#include "FLIR_I2C.h"
 #include <cstdint>
 #include "thermal_datatypes.hpp"
 
@@ -33,8 +34,4 @@ class Lepton : public IThermal {
 		bool isCCIReady();
 
 		SPI_HandleTypeDef *spiHandle;
-		GPIO_TypeDef *csPort;
-		uint16_t csPin;
-        extern I2C_HandleTypeDef hi2c1;
-
 };

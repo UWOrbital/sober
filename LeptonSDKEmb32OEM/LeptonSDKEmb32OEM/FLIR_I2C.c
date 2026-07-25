@@ -127,9 +127,12 @@ LEP_RESULT DEV_I2C_MasterInit(LEP_UINT16 portID,
 	
     if (HAL_I2C_IsDeviceReady(&hi2c1, I2C_DEVICE_ADDRESS, 3, 1000) != HAL_OK)
     {
-        // log: hi2c->State = ?
+        // log hi2c1.State;
+        // log i2c device not ready
         result = LEP_ERROR;
     }
+
+    result =  DEV_I2C_MasterStatus();
 
     // can have something configure baud if we want, but for now just return the baud rate we were given
     *BaudRate = *BaudRate;

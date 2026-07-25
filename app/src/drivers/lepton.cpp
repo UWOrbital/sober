@@ -13,53 +13,27 @@ Lepton::Lepton(SPI_HandleTypeDef *spiHandle, GPIO_TypeDef *csPort, uint16_t csPi
 
 int Lepton::init() {
 
-    // wait 950 ms (see datasheet 2)
-    HAL_Delay(950);
-
-    HAL_I2C_IsDeviceReady(&hi2c1, I2C_DEVICE_ADDRESS, 3, 1000); // Check if device is ready
-        
-    int status = isCCIReady();
-
-    return status; // Return 0 on success, -1 otherwise
+    if (DEV_I2C_MasterInit(LEP_UINT16 portID, 
+                              LEP_UINT16 *BaudRate) != LEP_OK) {
+        return -1; // Return -1 on failure
+    }
+    
+    return 0; // Return 0 on success
 }
 
 bool Lepton::isCCIReady() {
-        // command STATUS read in 0x0002
-    std::int8_t errorCode;
-    uint8_t status[2] = {0};
-    if (readRegister(0x0002, &status) != HAL_OK) { // error, could not read status register
-        errorCode = status[0]; // log this later
-        return false;
-    }
-    // else if (!(status[1] && 0x02 >> 1)){ // if bit 1 is 0, ROM is cooked could not boot
-    //     return false;
-    // }
-    
-    while(status[1] != 0x06){ // must be 0000 0110 when ready 
-        errorCode = status[0]; // log this later
-        HAL_Delay(100);
-        readRegister(0x0002, &status);
-        if (HAL_GetTick() >= 2000) // timeout at 2 seconds
-            return false;
+    if (DEV_I2C_MasterStatus() != LEP_OK) {
+        return false; // CCI is not ready
     }
 
     return true;
 }
-        // poll sys ffc command status (4.5.18 see this part) (system ready return)
+    // poll sys ffc command status (4.5.18 see this part) (system ready return)
 
-HAL_StatusTypeDef Lepton::readRegister(uint16_t* register_address, uint16_t *rxData) {
-    // HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
-    //                               uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
-    // uses i2c handle, cci device address, register address provided, rxdata payload, size of 2 bytes, timeout of 1000 ms
-    return HAL_I2C_Mem_Read(&hi2c1, I2C_DEVICE_ADDRESS, register_address, I2C_MEMADD_SIZE_16BIT, (uint8_t *)rxData, 2, 1000);
-}
+HAL_StatusTypeDef Lepton::readRegister(uint16_t* register_address, uint16_t *rxData) {}
+    
 
-bool Lepton::writeRegister(uint16_t register_address, uint16_t value) {
-    bool status;
-    // Write to the specified register of the Lepton camera via SPI
-    // This may involve sending a command and data
-    return status;
-}
+bool Lepton::writeRegister(uint16_t register_address, uint16_t value) {}
 
 int8_t Lepton::sendCommand(uint16_t command) {
     // Implementation for sending command to Lepton camera
