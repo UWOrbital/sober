@@ -74,12 +74,8 @@ LEP_UINT8 rx[I2C_BUFFER_SIZE];
 /******************************************************************************/
 /** PRIVATE DATA DECLARATIONS                                                **/
 /******************************************************************************/
-LEP_PROTOCOL_DEVICE_E masterDevice;
 
-LEP_CMD_PACKET_T cmdPacket;
-LEP_RESPONSE_PACKET_T responsePacket;
-
-I2C_HandleTypeDef hi2c1; // Define the static member variable
+extern I2C_HandleTypeDef hi2c1; // Define the static member variable
 
 /******************************************************************************/
 /** PRIVATE FUNCTION DECLARATIONS                                            **/
@@ -129,13 +125,13 @@ LEP_RESULT DEV_I2C_MasterInit(LEP_UINT16 portID,
     {
         // log hi2c1.State;
         // log i2c device not ready
-        result = LEP_ERROR;
+        return LEP_ERROR;
     }
 
     result =  DEV_I2C_MasterStatus();
 
     // can have something configure baud if we want, but for now just return the baud rate we were given
-    *BaudRate = *BaudRate;
+    *BaudRate = hi2c1.Init.ClockSpeed / 1000; // return the actual baud rate in kHz
 
    return(result);
 }
@@ -196,13 +192,12 @@ LEP_RESULT DEV_I2C_MasterReadData(LEP_UINT16  portID,               // User-defi
                                  )
 { 
    LEP_RESULT result = LEP_OK;
-   LEP_UINT8 bytesToRead = (wordsToRead << 1);
-   LEP_UINT8 bytesActuallyRead = 0;
+   LEP_UINT16 bytesToRead = (wordsToRead << 1);
 
     // HAL_I2C_Mem_Read(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
     //                               uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
     // uses i2c handle, cci device address, register address provided, rxdata payload, x bytes read, timeout of 1000 ms
-    if (HAL_I2C_Mem_Read(&hi2c1, I2C_DEVICE_ADDRESS, regAddress, I2C_MEMADD_SIZE_16BIT, (uint8_t *)rxData, bytesToRead, 1000) != HAL_OK)
+    if (HAL_I2C_Mem_Read(&hi2c1, I2C_DEVICE_ADDRESS, regAddress, I2C_MEMADD_SIZE_16BIT, (uint8_t *)rx, bytesToRead, 1000) != HAL_OK)
     {
         *numWordsRead = 0;
         return LEP_ERROR_I2C_FAIL;
@@ -215,7 +210,7 @@ LEP_RESULT DEV_I2C_MasterReadData(LEP_UINT16  portID,               // User-defi
         readDataPtr[i] = REVERSE_ENDIENESS_UINT16(src[i]);
     }
    
-    *numWordsRead = (bytesActuallyRead >> 1);
+    *numWordsRead = wordsToRead;
 
    return(result);
 }
@@ -230,31 +225,30 @@ LEP_RESULT DEV_I2C_MasterWriteData(LEP_UINT16  portID,              // User-defi
 {
    
    LEP_RESULT result = LEP_OK;
-   LEP_UINT8 bytesToWrite = (wordsToWrite << 1);
-   LEP_UINT8 bytesActuallyWritten = 0;
-//HAL_StatusTypeDef HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
-                                    //uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
- 
-    if (HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, DevAddress, regAddress,
-                                    I2C_MEMADD_SIZE_16BIT, (uint8_t *)writeDataPtr, bytesToWrite, 1000) != HAL_OK)
+   LEP_UINT16 bytesToWrite = (wordsToWrite << 1);
+    //HAL_StatusTypeDef HAL_I2C_Mem_Write(I2C_HandleTypeDef *hi2c, uint16_t DevAddress, uint16_t MemAddress,
+                                        //uint16_t MemAddSize, uint8_t *pData, uint16_t Size, uint32_t Timeout);
+    for (LEP_UINT16 i = 0; i < wordsToWrite; i++) {
+        txWordBuf[i] = REVERSE_ENDIENESS_UINT16(writeDataPtr[i]);
+    }
+
+    if (HAL_I2C_Mem_Write(&hi2c1, deviceAddress, regAddress,
+                                    I2C_MEMADD_SIZE_16BIT, (uint8_t *)txWordBuf, bytesToWrite, 1000) != HAL_OK)
     {
         *numWordsWritten = 0;
         return LEP_ERROR_I2C_FAIL;
         // read from status register whats wrong in hal. are there any error flags? if its not hal ok?
     }
 
-    *numWordsWritten = (bytesActuallyWritten >> 1);
+    *numWordsWritten = wordsToWrite;
 
-   return(result);
-
-    LEP_RESULT result = LEP_OK;
-  
+   return(result);  
 }
 
 LEP_RESULT DEV_I2C_MasterReadRegister( LEP_UINT16 portID,
                                        LEP_UINT8  deviceAddress, 
                                        LEP_UINT16 regAddress,
-                                       LEP_UINT16 *regValue,     // Number of 16-bit words actually written
+                                       LEP_UINT16 *regValue,    //buffer to hold the value read from the register
                                        LEP_UINT16 *status
                                      )
 {
@@ -289,26 +283,29 @@ LEP_RESULT DEV_I2C_MasterStatus(void )
     LEP_RESULT result = LEP_OK;
 
     int8_t errorCode;
-    uint8_t status[2] = {0};
+    LEP_UINT16 statusReg = 0;
     LEP_UINT16 returnStatus;
     if (DEV_I2C_MasterReadRegister(0x00,
                                     I2C_DEVICE_ADDRESS, 
                                     0x0002,
-                                    &status,    // should be payload, i forget how to add a buffer as ptr
+                                    &statusReg,    
                                     &returnStatus
                                      ) != LEP_OK) { // error, could not read status register
-        errorCode = status[0]; // log this later
+        (LEP_UINT8*) returnedData = (LEP_UINT16*) &statusReg; // cast to 2 byte array
+        errorCode = returnedData[0]; // log this later
         return LEP_ERROR_I2C_FAIL;
     }
     // else if (!(status[1] && 0x02 >> 1)){ // if bit 1 is 0, ROM is cooked could not boot
     //     return false;
     // }
     
-    while(status[1] != 0x06){ // must be 0000 0110 when ready 
+    LEP_UINT32 startTick = HAL_GetTick();
+
+    while(status[1] & 0x06 != 0x06){ // must be 0000 0110 when ready . BIT MASK FOR IT
         errorCode = status[0]; // log this later
         HAL_Delay(100);
-        readRegister(0x0002, &status);
-        if (HAL_GetTick() >= 2000) // timeout at 2 seconds
+        DEV_I2C_MasterReadRegister(0x00, I2C_DEVICE_ADDRESS, 0x0002, &statusReg, &returnStatus);
+        if ((HAL_GetTick() - startTick) >= 2000) // timeout at 2 seconds
             return LEP_ERROR_I2C_FAIL;
     }
 
