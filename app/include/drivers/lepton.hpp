@@ -1,14 +1,22 @@
 #pragma once
 
 #include "IThermal.hpp"
-#include "stm32h7xx_hal.h"
-#include "FLIR_I2C.h"
 #include <cstdint>
 #include "thermal_datatypes.hpp"
+#include "stm32h7xx_hal.h"
+
+#include "FLIR_I2C.h"
+#include "LEPTON_SDK.h"
+#include "LEPTON_VID.h"
+#include "LEPTON_SYS.h"
+#include "LEPTON_RAD.h"
+#include "LEPTON_AGC.h"
+
 
 class Lepton : public IThermal {
 	public:
-		Lepton(SPI_HandleTypeDef *spiHandle, GPIO_TypeDef *csPort, uint16_t csPin);
+		Lepton(I2C_HandleTypeDef *i2cHandle,
+           SPI_HandleTypeDef *spiHandle, GPIO_TypeDef *csPort, uint16_t csPin);
 	
 		// Initialization
 		int init() override;
