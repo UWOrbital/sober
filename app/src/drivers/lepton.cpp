@@ -124,5 +124,5 @@ result = LEP_ClosePort(portDescPtr);
      // Return false on failure
     }
     // This may involve closing the SPI interface and cleaning up any allocated memory
-    }
+}
 

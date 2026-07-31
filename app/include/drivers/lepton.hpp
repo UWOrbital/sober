@@ -35,11 +35,13 @@ class Lepton : public IThermal {
         void set_calibration(const Calibration_t &cal) override;
 	
 		SPI_HandleTypeDef *getSPI();
-
+        I2C_HandleTypeDef *getI2C();
+        
 	private:
 		HAL_StatusTypeDef readRegister(uint16_t registerAddress, uint16_t *value);
 		HAL_StatusTypeDef writeRegister(uint16_t registerAddress, uint16_t value);
 		bool isCCIReady();
 
 		SPI_HandleTypeDef *spiHandle;
+        I2C_HandleTypeDef *i2cHandle;
 };

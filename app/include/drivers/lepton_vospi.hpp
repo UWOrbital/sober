@@ -3,6 +3,9 @@
 #include "stm32h7xx_hal.h"
 #include "thermal_datatypes.hpp"
 
+#define VOSPI_PACKET_SIZE 164
+
+
 class LeptonVoSpi {
 public:
     LeptonVoSpi(SPI_HandleTypeDef *spiHandle, GPIO_TypeDef *csPort, uint16_t csPin);
@@ -22,4 +25,10 @@ private:
     ThermalImageFrame_t frameBuffer_;
     uint32_t lastFrameTimestamp_;
     bool frameReady_;
+    static LeptonVoSpi* activeInstance_;
+    static void onRxHalfComplete(SPI_HandleTypeDef *hspi);
+    static void onRxComplete(SPI_HandleTypeDef *hspi);
+    static void onError(SPI_HandleTypeDef *hspi);    
+    uint8_t vospiDmaBuf[2 * VOSPI_PACKET_SIZE];  // ping-pong: [0] and [1]
+
 };
