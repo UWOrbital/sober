@@ -391,7 +391,7 @@ LEP_RESULT LEP_ResetPort(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr)
 
     if( portDescPtr->portType == LEP_CCI_TWI )
     {
-        LEP_I2C_ResetPort( portDescPtr );
+        result = LEP_I2C_ResetPort( portDescPtr );
     }
     else if( portDescPtr->portType == LEP_CCI_SPI )
     {
@@ -408,7 +408,7 @@ LEP_RESULT LEP_GetPortStatus(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
                              LEP_UINT16 *status)
 {
     LEP_RESULT result;
-
+    result = LEP_I2C_GetPortStatus(portDescPtr);
 
     return(result);
 }

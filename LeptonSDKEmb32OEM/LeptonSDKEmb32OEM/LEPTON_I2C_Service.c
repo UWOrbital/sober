@@ -149,7 +149,7 @@ LEP_RESULT LEP_I2C_MasterClose(LEP_CAMERA_PORT_DESC_T_PTR portDescriptorPtr)
 LEP_RESULT LEP_I2C_MasterReset(LEP_CAMERA_PORT_DESC_T_PTR portDescriptorPtr )
 {
     LEP_RESULT result = LEP_OK;
-
+    result = DEV_I2C_MasterReset();
     return(result);
 }
 

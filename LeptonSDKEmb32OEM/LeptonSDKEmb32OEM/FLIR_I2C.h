@@ -37,6 +37,7 @@ extern "C"
     #include "LEPTON_Types.h"
     #include "LEPTON_ErrorCodes.h"
     #include "stm32h7xx_hal.h"
+    #include "i2c.h"
 
 /******************************************************************************/
 /** EXPORTED DEFINES                                                         **/

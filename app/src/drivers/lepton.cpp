@@ -1,34 +1,40 @@
 // Lepton.cpp
-#pragma once
-
 #include <string.h>
 #include "lepton.hpp"
 
-I2C_HandleTypeDef hi2c1; // Define the static member variable
+constexpr uint16_t PORT_ID = 0x00; 
 
-uint16_t portID = 0;
-LEP_CAMERA_PORT_E portType = LEP_CCI_TWI;
-uint16_t portBaudRate = 100; // Adjust as needed
-LEP_CAMERA_PORT_DESC_T_PTR portDescPtr;
+static constexpr LEP_CAMERA_PORT_E portType = LEP_CCI_TWI; //assign port to TWI for now
+static LEP_CAMERA_PORT_DESC_T portDesc; 
+static LEP_CAMERA_PORT_DESC_T_PTR portDescPtr = &portDesc;
 
+// many error codes exist in the lepton sdk, but we will just return -1 for now. can expand later if necessary.
+
+// the handles for the i2c and spi interfaces are actually defined in spi.c and i2c.c
+// so we pass in a pointer to those handles. in the main.cpp code that calls this class
+// to be expanded upon in lepton.hpp (add more members to constructor); may need other pins? or do we need pins at all?
 Lepton::Lepton(I2C_HandleTypeDef *i2cHandle,
-                SPI_HandleTypeDef *spiHandle, GPIO_TypeDef *csPort, uint16_t csPin)
-    : i2cHandle(i2cHandle), spiHandle(spiHandle), csPort(csPort), csPin(csPin) {
+                SPI_HandleTypeDef *spiHandle)
+    : i2cHandle(i2cHandle), spiHandle(spiHandle) {
 }
 
-int Lepton::init() {
-
-    uint16_t baudRate;
+LEP_RESULT Lepton::init() {
+     /* FROM SDK: Using the Lepton SDK to communicate with the Lepton camera requires opening a supported
+communication port before issuing any other calls. The port open operation specifies the desired baud
+rate for the port and returns a port descriptor for use with all other SDK APIs. */
+    uint16_t baudRate = 100; 
     // initialize the i2c handle
     // initialize portDescPtr and allocate memory for it
-    if (LEP_OpenPort(portID,
+  
+    // in main: apply power, clock, and reset_L to high. (IDD 2.1.1)
+    // This is typically done in the main application code before initializing the Lepton
+
+  LEP_RESULT result = LEP_OpenPort(PORT_ID,
                     portType,
-                    portBaudRate,
-                    portDescPtr) != LEP_OK) {
-        return -1; // Return -1 on failure
-    }
+                    baudRate,
+                    portDescPtr)
     
-    return 0; // Return 0 on success
+    return result; // Return the result of the operation
 }
 
 bool Lepton::Reset(){
@@ -40,36 +46,37 @@ bool Lepton::Reset(){
     return true; // Return true on success
 }
 
+
+// call this over and over until it returns true for every command to send
 bool Lepton::isCCIReady() {
-    if (DEV_I2C_MasterStatus() != LEP_OK) {
-        return false; // CCI is not ready
+    
+
+    LEP_UINT16 status = 0;
+    if (LEP_DirectReadRegister(portDescPtr, LEP_I2C_STATUS_REG, &status) != LEP_OK) {
+        return false;
     }
-
-    // checking register 0x2 as well, but just the 2nd bit. not the other one. so not sure what to do with this.
-    // LEP_SDK_BOOT_STATUS_E bootStatus;
-    // if (LEP_GetCameraBootStatus(portDescPtr, &bootStatus) != LEP_OK) {
-    //     // log error, boot status
-    //     return false; // Failed to get boot status
-    // }
-    // else if (!bootStatus) { // bootStatus must be enum 1
-    //     return false; // Camera is not booted
-    // }
-
-    return true;
-}
+    return (status & 0x05) == 0x04;   // booted and not busy
+    }
     // poll sys ffc command status (4.5.18 see this part) (system ready return)
 
-void Lepton::configureSettings() {
+int Lepton::configureSettings() {
     // disable/enable agc
-    LEP_SetAgcEnableState( portDescPtr, 0); // disable for now, enable later if necessary
-    LEP_SetAgcPolicy( portDescPtr, LEP_AGC_LINEAR); // set to linear for now, can change to HEQ later if necessary
-    LEP_SetRadEnableState( portDescPtr, LEP_RAD_DISABLE); // enable radiometry for now, can change to disable later if necessary);
-    LEP_SetOemVideoOutputFormat( portDescPtr, LEP_VID_VIDEO_OUTPUT_FORMAT_RAW14); // set to raw14 for now, can change to other formats later if necessary
+    LEP_RESULT r;
+    if ((r = LEP_SetAgcEnableState(portDescPtr, LEP_AGC_DISABLE)) != LEP_OK) return r;
+    if ((r = LEP_SetAgcPolicy(portDescPtr, LEP_AGC_LINEAR)) != LEP_OK) return r;
+    if ((r = LEP_SetRadEnableState(portDescPtr, LEP_RAD_DISABLE)) != LEP_OK) return r;
+    // skip to keep default for now
+    //if ((r = LEP_SetOemVideoOutputFormat( portDescPtr, LEP_VIDEO_OUTPUT_FORMAT_RAW14)) != LEP_OK) return r;
+
+    return r;
+
+    //then when init calls this, 
+    // int rc = configureSettings(); if (rc != 0) return rc;
 }
 
 void Lepton::getSerialNumber() {
-    
-    LEP_SYS_FLIR_SERIAL_NUMBER_T_PTR sysSerialNumberBufPtr = new LEP_SYS_FLIR_SERIAL_NUMBER_T; // Assuming you have a valid buffer for the serial number
+    LEP_SYS_FLIR_SERIAL_NUMBER_T sysSerialNumberBuf;
+    LEP_SYS_FLIR_SERIAL_NUMBER_T_PTR sysSerialNumberBufPtr = &sysSerialNumberBuf; // Assuming you have a valid buffer for the serial number
     
     LEP_RESULT status = LEP_GetSysFlirSerialNumber(portDescPtr, sysSerialNumberBufPtr);
     if (status != LEP_OK) {
@@ -77,7 +84,6 @@ void Lepton::getSerialNumber() {
     } else {
         //log serial number from sysSerialNumberBufPtr
     }
-    delete sysSerialNumberBufPtr; // Clean up the allocated memory
 }
 
 ThermalImageFrame_t Lepton::streamFrames() {
@@ -119,10 +125,7 @@ SPI_HandleTypeDef *Lepton::getSPI() {
 }
 
 Lepton::~Lepton() {
-result = LEP_ClosePort(portDescPtr);
-    if (result != LEP_OK) {
-     // Return false on failure
-    }
+    LEP_RESULT result = LEP_ClosePort(portDescPtr);
+    
     // This may involve closing the SPI interface and cleaning up any allocated memory
 }
-

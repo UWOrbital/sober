@@ -176,6 +176,7 @@ LEP_RESULT LEP_I2C_GetAttribute(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
     LEP_INT16 statusCode;
     LEP_UINT32 done;
     LEP_UINT16 crcExpected, crcActual;
+    LEP_UINT16 timeoutCount = LEPTON_I2C_COMMAND_BUSY_WAIT_COUNT;
 
     /* Implement the Lepton TWI READ Protocol
     */
@@ -245,6 +246,14 @@ LEP_RESULT LEP_I2C_GetAttribute(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
            return(result);
         }
         done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
+
+        if (timeoutCount-- == 0)
+        {
+            /* Timed out waiting for command busy to go away
+            */ 
+          return(LEP_TIMEOUT_ERROR);
+
+        }
 
     }while( !done );
     
@@ -347,6 +356,8 @@ LEP_RESULT LEP_I2C_SetAttribute(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
 
     if( result == LEP_OK )
     {
+        timeoutCount = LEPTON_I2C_COMMAND_BUSY_WAIT_COUNT;
+
         /* Now WRITE the DATA to the DATA REGISTER(s)
         */ 
         if( attributeWordLength <= 16 )
@@ -416,6 +427,14 @@ LEP_RESULT LEP_I2C_SetAttribute(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
                     }
                     done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
 
+                    if (timeoutCount-- == 0)
+                    {
+                      /* Timed out waiting for command busy to go away
+                      */ 
+                      return(LEP_TIMEOUT_ERROR);
+
+                    }
+
                 }while( !done );
 
                     /* Check statusReg word for Errors?
@@ -470,12 +489,14 @@ LEP_RESULT LEP_I2C_RunCommand(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
         {
             /* Timed out waiting for command busy to go away
             */ 
+            return (LEP_TIMEOUT_ERROR);
 
         }
     }while( !done );
 
     if( result == LEP_OK )
     {
+        timeoutCount = LEPTON_I2C_COMMAND_BUSY_WAIT_COUNT;
         /* Set the Lepton's DATA LENGTH REGISTER first to inform the
         ** Lepton Camera no 16-bit DATA words being transferred.
         */ 
@@ -512,6 +533,10 @@ LEP_RESULT LEP_I2C_RunCommand(LEP_CAMERA_PORT_DESC_T_PTR portDescPtr,
                     }
                     done = (statusReg & LEP_I2C_STATUS_BUSY_BIT_MASK)? 0: 1;
                     /* Timeout? */
+                    if (timeoutCount-- == 0)
+                    {
+                      return(LEP_TIMEOUT_ERROR);
+                    }
 
                 }while( !done );
 

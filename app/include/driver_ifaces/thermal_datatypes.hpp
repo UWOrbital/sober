@@ -4,8 +4,8 @@
 
 // unscaled, NED frame
 typedef struct {
-    int16_t raw_frame[38340]; // 160x120
-    float frame_temps[38340]; // 160x120, converted
+    int16_t raw_frame[19200]; // 160x120
+    float frame_temps[19200]; // 160x120, converted
     uint32_t timestamp_ms;                            // Time counter (ms since boot), from telemetry
     uint32_t frame_count;                             // Frame sequence number, from telemetry
 } ThermalImageFrame_t;
